@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Vehicle Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-slate-900 text-white h-full flex flex-col m-0 p-0 overflow-hidden">
+
+  <!-- Header -->
+  <header class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center shrink-0">
+    <h1 class="text-xl font-bold flex items-center gap-2">
+      <span class="bg-indigo-600 px-2 py-1 rounded-lg text-sm">GPS</span> 
+      Live Vehicle Location Tracker
+    </h1>
+  </header>
+
+  <!-- Main Content Layout -->
+  <div class="flex flex-1 h-[calc(100vh-65px)] overflow-hidden">
+    
+    <!-- Left Sidebar -->
+    <div class="w-80 bg-slate-800/50 p-4 border-r border-slate-700 flex flex-col shrink-0">
+      <div class="flex gap-2 mb-4">
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="Search Plate or Phone..." 
+          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <button onclick="searchVehicle()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg font-semibold text-sm transition">
+          Find
+        </button>
+      </div>
+
+      <!-- Vehicle Cards Target -->
+      <div id="vehicleList" class="flex-1 overflow-y-auto space-y-3"></div>
+    </div>
+
+    <!-- Google Map Target -->
+    <div class="flex-1 h-full w-full relative">
+      <div id="map" style="width: 100%; height: 100%;"></div>
+    </div>
+
+  </div>
+
+  <!-- Google Maps Script with async parameter -->
+  <script 
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDLaRI8ItoDvFOCvkByp6gLmJqgnW9CJ-U&callback=initMap&loading=async" 
+    async 
+    defer>
+  </script>
+  <script src="/app.js"></script>
+</body>
+</html>

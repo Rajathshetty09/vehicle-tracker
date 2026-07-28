@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver GPS Location Transmitter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+
+  <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="bg-indigo-600 p-3 rounded-xl font-bold">GPS</div>
+      <div>
+        <h1 class="text-lg font-bold">Driver Live Location</h1>
+        <p class="text-xs text-slate-400">Share your live GPS with the dashboard</p>
+      </div>
+    </div>
+
+    <!-- Phone Number Input -->
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">
+          Your Mobile Number
+        </label>
+        <input 
+          type="tel" 
+          id="phoneNumber" 
+          placeholder="Enter phone number saved in DB" 
+          class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+      </div>
+
+      <button 
+        id="startBtn" 
+        class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-semibold transition"
+      >
+        Start Broadcasting GPS
+      </button>
+
+      <!-- Live Coordinates Display -->
+      <div id="statusCard" class="hidden bg-slate-900/80 border border-slate-700/60 p-4 rounded-xl space-y-2 mt-4 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400">Status:</span>
+          <span id="statusText" class="text-emerald-400 font-semibold animate-pulse">Broadcasting Live</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Latitude:</span>
+          <span id="latVal" class="font-mono text-slate-200">--</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Longitude:</span>
+          <span id="lngVal" class="font-mono text-slate-200">--</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let watchId = null;
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      const phone = document.getElementById('phoneNumber').value.trim();
+
+      if (!phone) {
+        alert("Please enter your mobile number first!");
+        return;
+      }
+
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+      }
+
+      // Lock button and show status
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('startBtn').textContent = "Tracking Active...";
+      document.getElementById('statusCard').classList.remove('hidden');
+
+      // Continuously watch GPS position
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const speed = position.coords.speed ? (position.coords.speed * 3.6) : 0; // m/s to km/h
+
+          document.getElementById('latVal').textContent = lat.toFixed(6);
+          document.getElementById('lngVal').textContent = lng.toFixed(6);
+
+          // Send real GPS coordinates to server.js
+          fetch('/api/driver/update-location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: phone, lat, lng, speed })
+          })
+          .then(res => res.json())
+          .then(data => console.log('Location sent:', data))
+          .catch(err => console.error('Error sending GPS:', err));
+        },
+        (error) => {
+          alert("GPS Permission Error: " + error.message);
+          document.getElementById('startBtn').disabled = false;
+          document.getElementById('startBtn').textContent = "Start Broadcasting GPS";
+        },
+        {
+          enableHighAccuracy: true, // Uses real GPS hardware on mobile
+          maximumAge: 0,
+          timeout: 10000
+        }
+      );
+    });
+  </script>
+</body>
+</html>
