@@ -2,31 +2,28 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
-// 1. Initialize express app FIRST
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// 2. NOW add middleware
 app.use(express.json());
-app.use(express.static('public')); // or wherever your static HTML/JS files are stored
+app.use(express.static('public'));
 
-// Attach io to request object if needed
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-// In-memory vehicles storage
-let vehicles = [];
+// In-memory users storage
+let users = [];
 
-// API route to get all vehicles
-app.get('/api/vehicles', (req, res) => {
-  res.json(vehicles);
+// GET endpoint for dashboard
+app.get('/api/users', (req, res) => {
+  res.json(users);
 });
 
-// POST endpoint targeted by driver.html
-app.post('/api/driver/update-location', (req, res) => {
+// POST endpoint targeted by driver/user tracking page
+app.post('/api/user/update-location', (req, res) => {
   const { identifier, lat, lng, speed } = req.body;
 
   if (!identifier || lat === undefined || lng === undefined) {
@@ -35,38 +32,37 @@ app.post('/api/driver/update-location', (req, res) => {
 
   const phone = identifier.replace(/[^0-9]/g, '');
 
-  let vehicle = vehicles.find(v => v.phone === phone || v.identifier === phone);
+  let user = users.find(u => u.phone === phone || u.identifier === phone);
 
-  if (!vehicle) {
-    vehicle = {
-      id: `VEH-${phone.slice(-4)}`,
-      plate: `DL-${phone.slice(-4)}`,
+  if (!user) {
+    user = {
+      id: `USER-${phone.slice(-4)}`,
+      name: `User ${phone.slice(-4)}`,
       phone: phone,
       identifier: phone,
       lat: Number(lat),
       lng: Number(lng),
       speed: Number(speed) || 0,
-      status: 'Live',
+      status: 'Active',
       lastUpdated: new Date()
     };
-    vehicles.push(vehicle);
-    console.log(`New driver registered: ${phone}`);
+    users.push(user);
+    console.log(`New user registered: ${phone}`);
   } else {
-    vehicle.lat = Number(lat);
-    vehicle.lng = Number(lng);
-    vehicle.speed = Number(speed) || 0;
-    vehicle.status = 'Live';
-    vehicle.lastUpdated = new Date();
+    user.lat = Number(lat);
+    user.lng = Number(lng);
+    user.speed = Number(speed) || 0;
+    user.status = 'Active';
+    user.lastUpdated = new Date();
   }
 
-  // Emit both event names to ensure app.js catches the updates
-  io.emit('vehicleUpdated', vehicle);
-  io.emit('updateVehicles', vehicles);
+  // Broadcast updates to dashboard clients
+  io.emit('userUpdated', user);
+  io.emit('updateUsers', users);
 
-  res.json({ success: true, message: "Location updated successfully", vehicle });
+  res.json({ success: true, message: "Location updated successfully", user });
 });
 
-// Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

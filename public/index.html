@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Vehicle Tracker</title>
+  <title>Live User Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -13,7 +13,7 @@
   <header class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center shrink-0">
     <h1 class="text-xl font-bold flex items-center gap-2">
       <span class="bg-indigo-600 px-2 py-1 rounded-lg text-sm">GPS</span> 
-      Live Vehicle Location Tracker
+      Live User Location Tracker
     </h1>
   </header>
 
@@ -32,7 +32,7 @@
           <input 
             type="text" 
             id="whatsappPhone" 
-            placeholder="Driver Phone (e.g. 919876543210)" 
+            placeholder="User Phone (e.g. 919876543210)" 
             class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <button 
@@ -46,21 +46,21 @@
         </div>
       </div>
 
-      <!-- Search Vehicle Section -->
+      <!-- Search User Section -->
       <div class="flex gap-2 mb-4">
         <input 
           type="text" 
           id="searchInput" 
-          placeholder="Search Plate or Phone..." 
+          placeholder="Search User ID or Phone..." 
           class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        <button onclick="searchVehicle()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg font-semibold text-sm transition">
+        <button onclick="searchUser()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg font-semibold text-sm transition">
           Find
         </button>
       </div>
 
-      <!-- Vehicle Cards Target -->
-      <div id="vehicleList" class="flex-1 overflow-y-auto space-y-3"></div>
+      <!-- User Cards Target -->
+      <div id="userList" class="flex-1 overflow-y-auto space-y-3"></div>
     </div>
 
     <!-- Google Map Target -->
@@ -70,27 +70,24 @@
 
   </div>
 
-  <!-- WhatsApp Trigger Script -->
   <script>
     function sendWhatsAppLink() {
-  const input = document.getElementById('whatsappPhone').value.trim();
-  const phone = input.replace(/[^0-9]/g, '');
-  
-  if (!phone || phone.length < 10) {
-    alert("Please enter a valid phone number with country code.");
-    return;
-  }
+      const input = document.getElementById('whatsappPhone').value.trim();
+      const phone = input.replace(/[^0-9]/g, '');
+      
+      if (!phone || phone.length < 10) {
+        alert("Please enter a valid phone number with country code.");
+        return;
+      }
 
-  // Pass the phone number directly in the URL query string
-  const trackingUrl = `https://vehicle-tracker-app-ysdj.onrender.com/driver.html?phone=${phone}`;
-  const message = `Hello! Please click this link on your phone to allow live location tracking: ${trackingUrl}`;
-  
-  const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-  window.open(waUrl, '_blank');
-}
+      const trackingUrl = `https://vehicle-tracker-app-ysdj.onrender.com/driver.html?phone=${phone}`;
+      const message = `Hello! Please click this link to enable live location tracking: ${trackingUrl}`;
+      
+      const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+      window.open(waUrl, '_blank');
+    }
   </script>
 
-  <!-- Google Maps Script with async parameter -->
   <script 
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDLaRI8ItoDvFOCvkByp6gLmJqgnW9CJ-U&callback=initMap&loading=async" 
     async 

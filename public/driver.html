@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Driver GPS Location Transmitter</title>
+  <title>User Live GPS Transmitter</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
@@ -12,12 +12,11 @@
     <div class="flex items-center gap-3 mb-6">
       <div class="bg-indigo-600 p-3 rounded-xl font-bold">GPS</div>
       <div>
-        <h1 class="text-lg font-bold">Driver Live Location</h1>
+        <h1 class="text-lg font-bold">User Live Location</h1>
         <p class="text-xs text-slate-400">Share your live GPS with the dashboard</p>
       </div>
     </div>
 
-    <!-- Phone Number Input -->
     <div class="space-y-4">
       <div>
         <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">
@@ -26,7 +25,7 @@
         <input 
           type="tel" 
           id="phoneNumber" 
-          placeholder="Enter phone number" 
+          placeholder="Enter mobile number" 
           class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
         >
       </div>
@@ -38,7 +37,6 @@
         Start Broadcasting GPS
       </button>
 
-      <!-- Live Coordinates Display -->
       <div id="statusCard" class="hidden bg-slate-900/80 border border-slate-700/60 p-4 rounded-xl space-y-2 mt-4 text-xs">
         <div class="flex justify-between items-center">
           <span class="text-slate-400">Status:</span>
@@ -59,7 +57,6 @@
   <script>
     let watchId = null;
 
-    // Automatically check URL parameters on load (e.g. driver.html?phone=919876543210)
     window.addEventListener('DOMContentLoaded', () => {
       const urlParams = new URLSearchParams(window.location.search);
       const phoneFromUrl = urlParams.get('phone');
@@ -67,7 +64,6 @@
       if (phoneFromUrl) {
         const phoneInput = document.getElementById('phoneNumber');
         if (phoneInput) {
-          // Fill input and make it read-only so the driver doesn't need to type
           phoneInput.value = phoneFromUrl.replace(/[^0-9]/g, '');
           phoneInput.readOnly = true;
           phoneInput.classList.add('bg-slate-800/60', 'text-slate-400', 'cursor-not-allowed');
@@ -89,24 +85,21 @@
         return;
       }
 
-      // Lock button and show status
       document.getElementById('startBtn').disabled = true;
       document.getElementById('startBtn').textContent = "Tracking Active...";
       document.getElementById('startBtn').classList.add('opacity-75', 'cursor-not-allowed');
       document.getElementById('statusCard').classList.remove('hidden');
 
-      // Continuously watch GPS position
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
-          const speed = position.coords.speed ? (position.coords.speed * 3.6) : 0; // m/s to km/h
+          const speed = position.coords.speed ? (position.coords.speed * 3.6) : 0;
 
           document.getElementById('latVal').textContent = lat.toFixed(6);
           document.getElementById('lngVal').textContent = lng.toFixed(6);
 
-          // Send real GPS coordinates to server
-          fetch('/api/driver/update-location', {
+          fetch('/api/user/update-location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ identifier: phone, lat, lng, speed })
@@ -122,7 +115,7 @@
           document.getElementById('startBtn').classList.remove('opacity-75', 'cursor-not-allowed');
         },
         {
-          enableHighAccuracy: true, // Uses real GPS hardware on mobile
+          enableHighAccuracy: true,
           maximumAge: 0,
           timeout: 10000
         }
