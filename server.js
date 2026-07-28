@@ -1,115 +1,58 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-
-// Initialize Express app and HTTP server FIRST
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-// Middleware to parse JSON body payloads
+// Express middleware to parse JSON bodies
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Simulated Database of Vehicles
-let vehiclesDB = [
-  {
-    id: "KA-01-AB-1234",
-    driver: "Rajath Shetty",
-    phone: "7259765738",
-    status: "Idle",
-    lat: 12.9357,
-    lng: 77.6227,
-    speed: 0,
-    isLiveGPS: false
-  },
-  {
-    id: "KA-05-XY-9876",
-    driver: "Abhishek",
-    phone: "8391973053",
-    status: "Idle",
-    lat: 12.9357,
-    lng: 77.6227,
-    speed: 0,
-    isLiveGPS: false
-  },
-  {
-    id: "MH-12-PQ-4567",
-    driver: "Raksha",
-    phone: "8762427560",
-    status: "Idle",
-    lat: 12.9279,
-    lng: 77.6271,
-    speed: 0,
-    isLiveGPS: false
-  }
+// In-memory array or database collection for vehicles
+let vehicles = [
+  // Default/Initial vehicles can stay here
 ];
 
-// 1. Get all vehicles API
-app.get('/api/vehicles', (req, res) => {
-  res.json(vehiclesDB);
-});
-
-// 2. Dual Search API (by Plate OR Phone)
-app.get('/api/vehicles/search/:query', (req, res) => {
-  const searchQuery = req.params.query.toLowerCase().replace(/\s+/g, '');
-
-  const vehicle = vehiclesDB.find(v => 
-    v.id.toLowerCase().replace(/\s+/g, '') === searchQuery || 
-    v.phone.includes(searchQuery)
-  );
-
-  if (!vehicle) {
-    return res.status(404).json({ message: "No vehicle found matching plate or phone number." });
-  }
-
-  res.json(vehicle);
-});
-
-// 3. Driver Live Location Endpoint
+// POST endpoint targeted by driver.html
 app.post('/api/driver/update-location', (req, res) => {
   const { identifier, lat, lng, speed } = req.body;
 
-  if (!identifier || !lat || !lng) {
-    return res.status(400).json({ message: "Missing location or vehicle/phone details." });
+  if (!identifier || lat === undefined || lng === undefined) {
+    return res.status(400).json({ error: "Missing required fields" });
   }
 
-  const index = vehiclesDB.findIndex(v => 
-    v.id.toLowerCase().replace(/\s+/g, '') === identifier.toLowerCase().replace(/\s+/g, '') || 
-    v.phone.includes(identifier)
-  );
+  // Clean the identifier (remove spaces/dashes)
+  const phone = identifier.replace(/[^0-9]/g, '');
 
-  if (index !== -1) {
-    vehiclesDB[index].lat = parseFloat(lat);
-    vehiclesDB[index].lng = parseFloat(lng);
-    vehiclesDB[index].speed = speed ? parseFloat(speed) : 0;
-    vehiclesDB[index].status = parseFloat(speed) > 0 ? "Moving" : "Idle";
-    vehiclesDB[index].isLiveGPS = true; // Prevents simulation jitter from overriding real GPS
+  // 1. Look for existing driver/vehicle in the array
+  let vehicle = vehicles.find(v => v.phone === phone || v.identifier === phone);
 
-    io.emit('locationUpdate', vehiclesDB);
-    return res.json({ success: true, message: "Location updated successfully." });
+  // 2. IF NOT FOUND: Auto-register the new driver on the fly!
+  if (!vehicle) {
+    vehicle = {
+      id: `VEH-${phone.slice(-4)}`,
+      plate: `DL-${phone.slice(-4)}`,
+      phone: phone,
+      identifier: phone,
+      lat: Number(lat),
+      lng: Number(lng),
+      speed: Number(speed) || 0,
+      status: 'Live',
+      lastUpdated: new Date()
+    };
+    vehicles.push(vehicle);
+    console.log(`New driver auto-registered: ${phone}`);
+  } else {
+    // 3. IF FOUND: Update their live location
+    vehicle.lat = Number(lat);
+    vehicle.lng = Number(lng);
+    vehicle.speed = Number(speed) || 0;
+    vehicle.status = 'Live';
+    vehicle.lastUpdated = new Date();
   }
 
-  res.status(404).json({ message: "Vehicle/Driver not found." });
-});
+  // 4. Broadcast live update to all active web dashboards via Socket.io
+  if (req.io) {
+    req.io.emit('vehicleUpdated', vehicle);
+    req.io.emit('updateVehicles', vehicles);
+  } else if (typeof io !== 'undefined') {
+    io.emit('vehicleUpdated', vehicle);
+    io.emit('updateVehicles', vehicles);
+  }
 
-// Simulation loop (ONLY moves vehicles that aren't using live mobile GPS)
-setInterval(() => {
-  vehiclesDB = vehiclesDB.map(v => {
-    if (v.status === 'Moving' && !v.isLiveGPS) {
-      const newLat = v.lat + (Math.random() - 0.5) * 0.001;
-      const newLng = v.lng + (Math.random() - 0.5) * 0.001;
-      const newSpeed = Math.floor(30 + Math.random() * 25);
-      return { ...v, lat: newLat, lng: newLng, speed: newSpeed };
-    }
-    return v;
-  });
-
-  io.emit('locationUpdate', vehiclesDB);
-}, 2000);
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  // Respond back to driver.html
+  res.json({ success: true, message: "Location updated successfully", vehicle });
 });
