@@ -26,14 +26,14 @@
         <input 
           type="tel" 
           id="phoneNumber" 
-          placeholder="Enter phone number saved in DB" 
-          class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="Enter phone number" 
+          class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
         >
       </div>
 
       <button 
         id="startBtn" 
-        class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-semibold transition"
+        class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-semibold transition flex justify-center items-center gap-2"
       >
         Start Broadcasting GPS
       </button>
@@ -59,8 +59,25 @@
   <script>
     let watchId = null;
 
+    // Automatically check URL parameters on load (e.g. driver.html?phone=919876543210)
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const phoneFromUrl = urlParams.get('phone');
+
+      if (phoneFromUrl) {
+        const phoneInput = document.getElementById('phoneNumber');
+        if (phoneInput) {
+          // Fill input and make it read-only so the driver doesn't need to type
+          phoneInput.value = phoneFromUrl.replace(/[^0-9]/g, '');
+          phoneInput.readOnly = true;
+          phoneInput.classList.add('bg-slate-800/60', 'text-slate-400', 'cursor-not-allowed');
+        }
+      }
+    });
+
     document.getElementById('startBtn').addEventListener('click', () => {
-      const phone = document.getElementById('phoneNumber').value.trim();
+      const rawPhone = document.getElementById('phoneNumber').value.trim();
+      const phone = rawPhone.replace(/[^0-9]/g, '');
 
       if (!phone) {
         alert("Please enter your mobile number first!");
@@ -75,6 +92,7 @@
       // Lock button and show status
       document.getElementById('startBtn').disabled = true;
       document.getElementById('startBtn').textContent = "Tracking Active...";
+      document.getElementById('startBtn').classList.add('opacity-75', 'cursor-not-allowed');
       document.getElementById('statusCard').classList.remove('hidden');
 
       // Continuously watch GPS position
@@ -87,7 +105,7 @@
           document.getElementById('latVal').textContent = lat.toFixed(6);
           document.getElementById('lngVal').textContent = lng.toFixed(6);
 
-          // Send real GPS coordinates to server.js
+          // Send real GPS coordinates to server
           fetch('/api/driver/update-location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -101,6 +119,7 @@
           alert("GPS Permission Error: " + error.message);
           document.getElementById('startBtn').disabled = false;
           document.getElementById('startBtn').textContent = "Start Broadcasting GPS";
+          document.getElementById('startBtn').classList.remove('opacity-75', 'cursor-not-allowed');
         },
         {
           enableHighAccuracy: true, // Uses real GPS hardware on mobile

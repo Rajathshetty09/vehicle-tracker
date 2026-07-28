@@ -73,25 +73,21 @@
   <!-- WhatsApp Trigger Script -->
   <script>
     function sendWhatsAppLink() {
-      const input = document.getElementById('whatsappPhone').value.trim();
-      
-      // Clean up string so it only contains numbers
-      const phone = input.replace(/[^0-9]/g, '');
-      
-      if (!phone || phone.length < 10) {
-        alert("Please enter a valid phone number with country code (e.g., 919876543210).");
-        return;
-      }
+  const input = document.getElementById('whatsappPhone').value.trim();
+  const phone = input.replace(/[^0-9]/g, '');
+  
+  if (!phone || phone.length < 10) {
+    alert("Please enter a valid phone number with country code.");
+    return;
+  }
 
-      const trackingUrl = "https://vehicle-tracker-app-ysdj.onrender.com/driver.html";
-      const message = `Hello! Please click this link on your phone to allow live location tracking: ${trackingUrl}`;
-      
-      // Construct official WhatsApp Web/App URL
-      const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-      
-      // Open in new tab
-      window.open(waUrl, '_blank');
-    }
+  // Pass the phone number directly in the URL query string
+  const trackingUrl = `https://vehicle-tracker-app-ysdj.onrender.com/driver.html?phone=${phone}`;
+  const message = `Hello! Please click this link on your phone to allow live location tracking: ${trackingUrl}`;
+  
+  const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  window.open(waUrl, '_blank');
+}
   </script>
 
   <!-- Google Maps Script with async parameter -->
