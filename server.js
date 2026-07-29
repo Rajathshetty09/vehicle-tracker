@@ -102,7 +102,7 @@ setInterval(() => {
       const secondsSinceLastUpdate = (now - new Date(user.lastUpdated)) / 1000;
       
       // If no updates received for > 20 seconds, mark device as Offline
-      if (secondsSinceLastUpdate > 20 && user.status !== 'Offline') {
+      if (secondsSinceLastUpdate > 60 && user.status !== 'Offline') {
         user.status = 'Offline';
         statusChanged = true;
         console.log(`User ${user.phone} marked Offline (No signal for >20s)`);
