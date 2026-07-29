@@ -31,7 +31,35 @@ function initMap() {
   }, 300);
 }
 
-// 1. EXPORT THIS FUNCTION TO WINDOW SO INLINE HTML ONCLICK WORKS
+// 1. WHATSAPP LINK GENERATOR (EXPOSED TO WINDOW)
+window.sendWhatsAppLink = function() {
+  const phoneInput = document.getElementById('whatsappPhone');
+  const rawPhone = phoneInput ? phoneInput.value.trim() : '';
+
+  if (!rawPhone) {
+    alert("Please enter a phone number.");
+    return;
+  }
+
+  // Remove spaces, pluses, dashes
+  const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+
+  if (cleanPhone.length < 10) {
+    alert("Please enter a valid phone number including country code (e.g. 916363167312).");
+    return;
+  }
+
+  // Automatically use current live domain (Render URL or localhost)
+  const liveHost = window.location.origin;
+  const trackingUrl = `${liveHost}/driver.html?phone=${cleanPhone}`;
+
+  const message = `Hello! Please click this link to enable live location tracking:\n${trackingUrl}`;
+  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+  window.open(whatsappUrl, '_blank');
+};
+
+// 2. SET SOURCE LOCATION (EXPOSED TO WINDOW)
 window.setSourceFromCurrentLocation = function() {
   if (!navigator.geolocation) {
     alert('Geolocation is not supported by your browser.');
@@ -62,7 +90,7 @@ window.setSourceFromCurrentLocation = function() {
   );
 };
 
-// 2. EXPORT DRIVER FOCUS FUNCTION
+// 3. DRIVER FOCUS (EXPOSED TO WINDOW)
 window.focusOnDriver = function(lat, lng) {
   if (map) {
     map.setView([lat, lng], 15);
