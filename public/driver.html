@@ -3,162 +3,124 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Live GPS Transmitter</title>
+  <title>Share Live Location</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
 
-  <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-    <div class="flex items-center gap-3 mb-6">
-      <div class="bg-indigo-600 p-3 rounded-xl font-bold">GPS</div>
-      <div>
-        <h1 class="text-lg font-bold">User Live Location</h1>
-        <p class="text-xs text-slate-400">Share your live GPS with the dashboard</p>
-      </div>
-    </div>
+  <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 w-full max-w-md text-center space-y-4">
+    <h1 class="text-xl font-bold">GPS Location Sharer</h1>
+    <p class="text-xs text-slate-400">Keep this tab open to continuously share your location.</p>
 
-    <div class="space-y-4">
+    <!-- Name & Phone Inputs -->
+    <div class="space-y-3 text-left">
       <div>
-        <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">
-          Your Mobile Number
-        </label>
+        <label class="text-xs font-semibold text-slate-400">Your Name</label>
         <input 
-          type="tel" 
-          id="phoneNumber" 
-          placeholder="Enter mobile number" 
-          class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-        >
+          type="text" 
+          id="userName" 
+          placeholder="e.g. John Doe" 
+          class="w-full px-3 py-2 mt-1 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
       </div>
 
-      <button 
-        id="startBtn" 
-        class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-semibold transition flex justify-center items-center gap-2"
-      >
-        Start Broadcasting GPS
-      </button>
-
-      <div id="statusCard" class="hidden bg-slate-900/80 border border-slate-700/60 p-4 rounded-xl space-y-2 mt-4 text-xs">
-        <div class="flex justify-between items-center">
-          <span class="text-slate-400">Status:</span>
-          <span id="statusText" class="text-emerald-400 font-semibold animate-pulse">Broadcasting Live</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Latitude:</span>
-          <span id="latVal" class="font-mono text-slate-200">--</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Longitude:</span>
-          <span id="lngVal" class="font-mono text-slate-200">--</span>
-        </div>
-        <!-- Battery Status Row -->
-        <div class="flex justify-between border-t border-slate-800 pt-2 mt-2">
-          <span class="text-slate-400">Battery Status:</span>
-          <span id="batteryVal" class="font-mono text-slate-200">--</span>
-        </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-400">Phone / Identifier</label>
+        <input 
+          type="text" 
+          id="userPhone" 
+          placeholder="e.g. 919876543210" 
+          class="w-full px-3 py-2 mt-1 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
       </div>
     </div>
+
+    <!-- Status Output -->
+    <div id="statusBox" class="p-3 bg-slate-900 rounded-lg text-xs font-mono text-slate-400 border border-slate-700">
+      Status: Ready to start...
+    </div>
+
+    <button 
+      onclick="startTracking()" 
+      class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold text-sm transition">
+      Start Sharing Location
+    </button>
   </div>
 
   <script>
+    // Pre-fill phone from URL params if present (e.g. ?phone=919876543210)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('phone')) {
+      document.getElementById('userPhone').value = urlParams.get('phone');
+    }
+
     let watchId = null;
 
-    // Helper to safely fetch device battery level & status
     async function getBatteryInfo() {
       if ('getBattery' in navigator) {
         try {
           const battery = await navigator.getBattery();
-          return {
-            level: Math.round(battery.level * 100),
-            isCharging: battery.charging
-          };
-        } catch (e) {
-          console.warn("Battery Status API not supported or blocked:", e);
-        }
+          return { level: Math.round(battery.level * 100), isCharging: battery.charging };
+        } catch (e) {}
       }
-      return { level: null, isCharging: null };
+      return { level: null, isCharging: false };
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const phoneFromUrl = urlParams.get('phone');
-
-      if (phoneFromUrl) {
-        const phoneInput = document.getElementById('phoneNumber');
-        if (phoneInput) {
-          phoneInput.value = phoneFromUrl.replace(/[^0-9]/g, '');
-          phoneInput.readOnly = true;
-          phoneInput.classList.add('bg-slate-800/60', 'text-slate-400', 'cursor-not-allowed');
-        }
-      }
-    });
-
-    document.getElementById('startBtn').addEventListener('click', () => {
-      const rawPhone = document.getElementById('phoneNumber').value.trim();
-      const phone = rawPhone.replace(/[^0-9]/g, '');
+    async function sendLocation(position) {
+      const name = document.getElementById('userName').value.trim();
+      const phone = document.getElementById('userPhone').value.trim();
+      const statusBox = document.getElementById('statusBox');
 
       if (!phone) {
-        alert("Please enter your mobile number first!");
+        statusBox.innerText = "Error: Please enter a phone number!";
         return;
       }
+
+      const battery = await getBatteryInfo();
+
+      const payload = {
+        identifier: phone,
+        name: name || undefined,
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        speed: position.coords.speed || 0,
+        batteryLevel: battery.level,
+        isCharging: battery.isCharging
+      };
+
+      fetch('/api/user/update-location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        statusBox.innerHTML = `
+          <span class="text-emerald-400 font-semibold">✓ Broadcasting Live</span><br/>
+          Lat: ${payload.lat.toFixed(4)}, Lng: ${payload.lng.toFixed(4)}
+        `;
+      })
+      .catch(err => {
+        statusBox.innerText = "Connection error while sending updates.";
+      });
+    }
+
+    function startTracking() {
+      const statusBox = document.getElementById('statusBox');
 
       if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
+        statusBox.innerText = "Geolocation is not supported by your browser.";
         return;
       }
 
-      document.getElementById('startBtn').disabled = true;
-      document.getElementById('startBtn').textContent = "Tracking Active...";
-      document.getElementById('startBtn').classList.add('opacity-75', 'cursor-not-allowed');
-      document.getElementById('statusCard').classList.remove('hidden');
+      statusBox.innerText = "Requesting GPS permissions...";
 
       watchId = navigator.geolocation.watchPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          const speed = position.coords.speed ? (position.coords.speed * 3.6) : 0;
-
-          // Fetch current battery status
-          const battery = await getBatteryInfo();
-
-          document.getElementById('latVal').textContent = lat.toFixed(6);
-          document.getElementById('lngVal').textContent = lng.toFixed(6);
-
-          if (battery.level !== null) {
-            document.getElementById('batteryVal').textContent = `${battery.level}% ${battery.isCharging ? '⚡ (Charging)' : '🔋'}`;
-          } else {
-            document.getElementById('batteryVal').textContent = 'N/A';
-          }
-
-          // Send GPS + Battery data to server
-          fetch('/api/user/update-location', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              identifier: phone, 
-              lat, 
-              lng, 
-              speed,
-              batteryLevel: battery.level,
-              isCharging: battery.isCharging
-            })
-          })
-          .then(res => res.json())
-          .then(data => console.log('Location & Battery sent:', data))
-          .catch(err => console.error('Error sending GPS:', err));
-        },
-        (error) => {
-          alert("GPS Permission Error: " + error.message);
-          document.getElementById('startBtn').disabled = false;
-          document.getElementById('startBtn').textContent = "Start Broadcasting GPS";
-          document.getElementById('startBtn').classList.remove('opacity-75', 'cursor-not-allowed');
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 10000
-        }
+        sendLocation,
+        (err) => { statusBox.innerText = `GPS Error: ${err.message}`; },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
       );
-    });
+    }
   </script>
 </body>
 </html>
