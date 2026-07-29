@@ -12,8 +12,13 @@ const PORT = process.env.PORT || 3000;
 // Middleware to parse JSON bodies
 app.use(express.json());
 
-// Serve static files from the current directory (index.html, driver.html, app.js, etc.)
-app.use(express.static(__dirname));
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Explicitly serve public/index.html when visiting http://localhost:3000/
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // In-memory array to hold active users
 let users = [];
