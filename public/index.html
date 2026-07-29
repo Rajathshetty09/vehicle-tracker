@@ -81,18 +81,17 @@
       }
 
       const trackingUrl = `https://vehicle-tracker-app-ysdj.onrender.com/driver.html?phone=${phone}`;
-      const message = `Hello! Please click this link to enable live location tracking: ${trackingUrl}`;
+      message = `Hello! Please click this link to enable live location tracking: ${trackingUrl}`;
       
       const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
       window.open(waUrl, '_blank');
     }
   </script>
 
-  <script 
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDLaRI8ItoDvFOCvkByp6gLmJqgnW9CJ-U&callback=initMap&loading=async" 
-    async 
-    defer>
-  </script>
+  <!-- 1. Load application logic first -->
   <script src="/app.js"></script>
+
+  <!-- 2. Load Google Maps API (without callback parameter to prevent refresh race conditions) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDLaRI8ItoDvFOCvkByp6gLmJqgnW9CJ-U"></script>
 </body>
 </html>

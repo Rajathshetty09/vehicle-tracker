@@ -195,4 +195,21 @@ window.searchUser = function() {
   }
 };
 
-window.initMap = initMap;
+function initMap() {
+  const mapElement = document.getElementById("map");
+  if (!mapElement) return;
+
+  const map = new google.maps.Map(mapElement, {
+    center: { lat: 20.5937, lng: 78.9629 }, // Your default center
+    zoom: 5,
+  });
+
+  // Your socket / marker setup code here...
+}
+
+// Make sure it runs after DOM + Google Maps script are loaded
+if (document.readyState === 'complete') {
+  initMap();
+} else {
+  window.addEventListener('load', initMap);
+}
