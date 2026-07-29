@@ -8,10 +8,10 @@ function initMap() {
   const mapElement = document.getElementById("map");
   if (!mapElement) return;
 
-  // Initialize Leaflet Map centered at default coordinates
+  // Initialize Leaflet Map
   map = L.map('map').setView([12.9716, 77.5946], 12);
 
-  // Load free OpenStreetMap tile layer
+  // Load OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap contributors'
