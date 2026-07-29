@@ -97,28 +97,44 @@ window.focusOnDriver = function(lat, lng) {
   }
 };
 
-// Handle incoming location updates from drivers
+// 4. RECEIVE INITIAL LOCATIONS (ON PAGE LOAD)
+socket.on('initialLocations', (drivers) => {
+  console.log('Received active drivers on connection:', drivers);
+  if (!drivers) return;
+
+  Object.values(drivers).forEach((driver) => {
+    if (driver && driver.lat && driver.lng) {
+      renderDriverOnMap(driver);
+    }
+  });
+});
+
+// 5. RECEIVE REAL-TIME LOCATION UPDATES
 socket.on('locationUpdate', (data) => {
   console.log('Location update received:', data);
   if (!data || !data.id) return;
+  renderDriverOnMap(data);
+});
 
+// Helper function to update/create markers and sidebar UI
+function renderDriverOnMap(data) {
   const { id, name, phone, lat, lng } = data;
 
-  // Update or create Map Marker
+  // Update or create Leaflet Map Marker
   if (markers[id]) {
     markers[id].setLatLng([lat, lng]);
-  } else {
+  } else if (map) {
     markers[id] = L.marker([lat, lng])
       .addTo(map)
       .bindPopup(`<b>${name || 'Driver'}</b><br>Phone: ${phone || 'N/A'}`);
   }
 
-  // Pan map to driver location
-  map.panTo([lat, lng]);
+  // Auto-center map on update
+  if (map) map.panTo([lat, lng]);
 
   // Update Left Sidebar UI
   updateSidebarCard(id, name, phone, lat, lng);
-});
+}
 
 // Update Sidebar Cards
 function updateSidebarCard(id, name, phone, lat, lng) {
