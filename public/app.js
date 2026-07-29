@@ -104,7 +104,7 @@ window.setSourceFromCurrentLocation = function() {
       map.setView(sourceLatLng, 14);
       if (statusText) statusText.innerText = `Source: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 
-      // Re-render user cards to refresh distance calculation
+      // Refresh distances on all existing user cards
       fetchInitialUsers();
     },
     (err) => {
@@ -121,7 +121,7 @@ window.focusOnDriver = function(lat, lng) {
   }
 };
 
-// Socket events
+// Socket Listeners
 socket.on('updateUsers', (users) => {
   if (Array.isArray(users)) renderUserList(users);
 });
@@ -135,15 +135,17 @@ function renderUserList(users) {
 }
 
 function renderSingleUser(user) {
-  const { id, name, phone, lat, lng, status } = user;
+  const { phone, identifier, name, lat, lng } = user;
   if (lat === undefined || lng === undefined) return;
 
-  const markerId = id || phone;
+  // Use unique key for markers dictionary
+  const key = phone || identifier;
 
-  if (markers[markerId]) {
-    markers[markerId].setLatLng([lat, lng]);
+  if (markers[key]) {
+    markers[key].setLatLng([lat, lng]);
+    markers[key].getPopup().setContent(`<b>${name}</b><br>Phone: ${phone || 'N/A'}`);
   } else if (map) {
-    markers[markerId] = L.marker([lat, lng])
+    markers[key] = L.marker([lat, lng])
       .addTo(map)
       .bindPopup(`<b>${name}</b><br>Phone: ${phone || 'N/A'}`);
   }
@@ -155,7 +157,8 @@ function updateSidebarCard(user) {
   const userList = document.getElementById('userList');
   if (!userList) return;
 
-  const cardId = `user-card-${user.id || user.phone}`;
+  const cardKey = user.phone || user.identifier;
+  const cardId = `user-card-${cardKey}`;
   let existingCard = document.getElementById(cardId);
 
   if (!existingCard) {
@@ -177,6 +180,14 @@ function updateSidebarCard(user) {
     distanceText = `📏 ${dist < 1 ? (dist * 1000).toFixed(0) + ' m' : dist.toFixed(2) + ' km'} away`;
   }
 
+  // Battery percentage readout logic
+  let batteryDisplay = '';
+  if (user.batteryLevel !== undefined && user.batteryLevel !== null) {
+    batteryDisplay = `🔋 ${user.batteryLevel}% ${user.isCharging ? '⚡' : ''}`;
+  } else {
+    batteryDisplay = `🔋 N/A`;
+  }
+
   existingCard.innerHTML = `
     <div class="flex justify-between items-start">
       <div>
@@ -187,8 +198,9 @@ function updateSidebarCard(user) {
         ${user.status || 'Active'}
       </span>
     </div>
-    <div class="text-[11px] font-mono text-emerald-400 font-semibold">
-      ${distanceText}
+    <div class="flex justify-between items-center text-[11px] font-mono">
+      <span class="text-emerald-400 font-semibold">${distanceText}</span>
+      <span class="text-slate-300 font-medium">${batteryDisplay}</span>
     </div>
     <div class="text-[11px] font-mono text-slate-400">
       Lat: ${Number(user.lat).toFixed(4)}, Lng: ${Number(user.lng).toFixed(4)}
