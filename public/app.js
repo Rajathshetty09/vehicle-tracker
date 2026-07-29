@@ -4,24 +4,21 @@ let map;
 let markers = {};
 let currentUsers = [];
 
-// Unified initMap function
 function initMap() {
   const mapElement = document.getElementById("map");
   if (!mapElement) return;
 
-  const defaultCenter = { lat: 12.9716, lng: 77.5946 };
+  // Initialize Leaflet Map centered at default coordinates
+  map = L.map('map').setView([12.9716, 77.5946], 12);
 
-  // Assign to the global 'map' variable (DO NOT use 'const map')
-  map = new google.maps.Map(mapElement, {
-    zoom: 12,
-    center: defaultCenter,
-  });
+  // Load free OpenStreetMap tile layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
 
   fetchUsers();
 }
-
-// Expose initMap to global window object
-window.initMap = initMap;
 
 function fetchUsers() {
   fetch('/api/users')
@@ -55,9 +52,12 @@ function updateMarkers(users) {
     const userKey = user.id || user.phone;
     if (!userKey) return;
 
-    const pos = { lat: Number(user.lat), lng: Number(user.lng) };
+    const lat = Number(user.lat);
+    const lng = Number(user.lng);
+
+    if (isNaN(lat) || isNaN(lng)) return;
+
     const isOffline = user.status === 'Offline';
-    const isLowBattery = user.batteryLevel !== null && user.batteryLevel !== undefined && user.batteryLevel <= 50;
     const batteryText = user.batteryLevel !== null && user.batteryLevel !== undefined 
       ? `${user.batteryLevel}% ${user.isCharging ? '⚡' : '🔋'}` 
       : 'N/A';
@@ -76,27 +76,11 @@ function updateMarkers(users) {
     `;
 
     if (markers[userKey]) {
-      markers[userKey].setPosition(pos);
-      if (markers[userKey].infoWindow) {
-        markers[userKey].infoWindow.setContent(infoContent);
-      }
+      markers[userKey].setLatLng([lat, lng]);
+      markers[userKey].getPopup().setContent(infoContent);
     } else {
-      const marker = new google.maps.Marker({
-        position: pos,
-        map: map,
-        title: `${user.name || user.id} (${userKey})`,
-      });
-
-      const infoWindow = new google.maps.InfoWindow({
-        content: infoContent
-      });
-
-      marker.infoWindow = infoWindow;
-
-      marker.addListener("click", () => {
-        infoWindow.open(map, marker);
-      });
-
+      const marker = L.marker([lat, lng]).addTo(map);
+      marker.bindPopup(infoContent);
       markers[userKey] = marker;
     }
   });
@@ -175,8 +159,10 @@ function renderUserList(users) {
 function focusUser(id) {
   const user = currentUsers.find(u => (u.id === id || u.phone === id));
   if (user && map) {
-    map.panTo({ lat: Number(user.lat), lng: Number(user.lng) });
-    map.setZoom(15);
+    map.setView([Number(user.lat), Number(user.lng)], 15);
+    if (markers[id]) {
+      markers[id].openPopup();
+    }
   }
 }
 
@@ -197,13 +183,4 @@ window.searchUser = function() {
   }
 };
 
-// Auto-trigger if Google Maps script is loaded after app.js or on window load
-if (typeof google !== 'undefined' && google.maps) {
-  initMap();
-} else {
-  window.addEventListener('load', () => {
-    if (typeof google !== 'undefined' && google.maps) {
-      initMap();
-    }
-  });
-}
+window.addEventListener('DOMContentLoaded', initMap);
