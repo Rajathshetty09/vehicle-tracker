@@ -7,13 +7,23 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
 
-  <!-- Leaflet CSS & JS -->
+  <!-- Leaflet CSS & JS (Fixed CSS URL) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Leaflet Routing Machine (For Distance & Shortest Route Calculation) -->
+  <!-- Leaflet Routing Machine -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+
+  <style>
+    /* Ensure map container takes full explicit dimensions */
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      z-index: 1;
+    }
+  </style>
 </head>
 <body class="bg-slate-900 text-white h-full flex flex-col m-0 p-0 overflow-hidden">
 
@@ -89,8 +99,8 @@
     </div>
 
     <!-- Map Area -->
-    <div class="flex-1 h-full w-full relative">
-      <div id="map" class="w-full h-full"></div>
+    <div class="flex-1 h-full w-full relative bg-slate-950">
+      <div id="map"></div>
     </div>
 
   </div>
@@ -103,7 +113,13 @@
         alert("Please enter a valid phone number with country code.");
         return;
       }
-      const trackingUrl = `${window.location.origin}/driver.html?phone=${phone}`;
+      
+      // Use deployed Render URL if live, or current origin for local test
+      const host = window.location.origin.includes('localhost') 
+        ? "https://vehicle-tracker-app-ysdj.onrender.com" 
+        : window.location.origin;
+
+      const trackingUrl = `${host}/driver.html?phone=${phone}`;
       const message = `Hello! Please click this link to enable live location tracking: ${trackingUrl}`;
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
     }
