@@ -4,11 +4,19 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// Enable CORS for Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(express.json());
 app.use(express.static('public'));
 
+// Attach io instance to request context
 app.use((req, res, next) => {
   req.io = io;
   next();
@@ -17,7 +25,7 @@ app.use((req, res, next) => {
 // In-memory users storage
 let users = [];
 
-// GET endpoint for dashboard
+// GET endpoint for dashboard/admin initialization
 app.get('/api/users', (req, res) => {
   res.json(users);
 });
@@ -30,20 +38,22 @@ app.post('/api/user/update-location', (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  const phone = identifier.replace(/[^0-9]/g, '');
+  // Clean phone / identifier string
+  const phone = String(identifier).replace(/[^0-9]/g, '') || String(identifier);
+  const suffix = phone.length >= 4 ? phone.slice(-4) : phone;
 
-  let user = users.find(u => u.phone === phone || u.identifier === phone);
+  let user = users.find(u => u.phone === phone || u.identifier === identifier);
 
   if (!user) {
     user = {
-      id: `USER-${phone.slice(-4)}`,
-      name: `User ${phone.slice(-4)}`,
+      id: `USER-${suffix}`,
+      name: `User ${suffix}`,
       phone: phone,
-      identifier: phone,
+      identifier: identifier,
       lat: Number(lat),
       lng: Number(lng),
       speed: Number(speed) || 0,
-      batteryLevel: batteryLevel !== undefined ? Number(batteryLevel) : null,
+      batteryLevel: batteryLevel !== undefined && batteryLevel !== null ? Number(batteryLevel) : null,
       isCharging: isCharging !== undefined ? Boolean(isCharging) : false,
       status: 'Active',
       lastUpdated: new Date()
@@ -54,7 +64,7 @@ app.post('/api/user/update-location', (req, res) => {
     user.lat = Number(lat);
     user.lng = Number(lng);
     user.speed = Number(speed) || 0;
-    user.batteryLevel = batteryLevel !== undefined ? Number(batteryLevel) : user.batteryLevel;
+    user.batteryLevel = batteryLevel !== undefined && batteryLevel !== null ? Number(batteryLevel) : user.batteryLevel;
     user.isCharging = isCharging !== undefined ? Boolean(isCharging) : user.isCharging;
     user.status = 'Active';
     user.lastUpdated = new Date();
@@ -65,6 +75,18 @@ app.post('/api/user/update-location', (req, res) => {
   io.emit('updateUsers', users);
 
   res.json({ success: true, message: "Location updated successfully", user });
+});
+
+// WebSocket Connection Events
+io.on('connection', (socket) => {
+  console.log(`Socket client connected: ${socket.id}`);
+  
+  // Send initial list of users immediately on connect
+  socket.emit('updateUsers', users);
+
+  socket.on('disconnect', () => {
+    console.log(`Socket client disconnected: ${socket.id}`);
+  });
 });
 
 // =========================================================

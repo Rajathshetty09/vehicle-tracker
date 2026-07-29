@@ -4,16 +4,24 @@ let map;
 let markers = {};
 let currentUsers = [];
 
+// Unified initMap function
 function initMap() {
+  const mapElement = document.getElementById("map");
+  if (!mapElement) return;
+
   const defaultCenter = { lat: 12.9716, lng: 77.5946 };
-  
-  map = new google.maps.Map(document.getElementById("map"), {
+
+  // Assign to the global 'map' variable (DO NOT use 'const map')
+  map = new google.maps.Map(mapElement, {
     zoom: 12,
     center: defaultCenter,
   });
 
   fetchUsers();
 }
+
+// Expose initMap to global window object
+window.initMap = initMap;
 
 function fetchUsers() {
   fetch('/api/users')
@@ -49,7 +57,6 @@ function updateMarkers(users) {
 
     const pos = { lat: Number(user.lat), lng: Number(user.lng) };
     const isOffline = user.status === 'Offline';
-    // CHANGED: Low battery threshold set to <= 50
     const isLowBattery = user.batteryLevel !== null && user.batteryLevel !== undefined && user.batteryLevel <= 50;
     const batteryText = user.batteryLevel !== null && user.batteryLevel !== undefined 
       ? `${user.batteryLevel}% ${user.isCharging ? '⚡' : '🔋'}` 
@@ -108,10 +115,8 @@ function renderUserList(users) {
     const uKey = u.id || u.phone;
     const isOffline = u.status === 'Offline';
     const hasBattery = u.batteryLevel !== null && u.batteryLevel !== undefined;
-    // CHANGED: Low battery threshold set to <= 50
     const isLowBattery = hasBattery && u.batteryLevel <= 50;
 
-    // Card border & background styling based on device state
     let cardStyle = 'bg-slate-800/80 border-slate-700/60 hover:border-indigo-500';
     if (isOffline) {
       cardStyle = 'bg-rose-950/30 border-rose-600/80 hover:border-rose-500';
@@ -128,7 +133,6 @@ function renderUserList(users) {
           <h3 class="font-bold text-white">${u.name || 'User ' + uKey}</h3>
           
           <div class="flex items-center gap-1.5">
-            <!-- Battery Badge -->
             ${hasBattery ? `
               <span class="px-2 py-0.5 text-xs rounded-full font-mono font-semibold ${
                 isLowBattery 
@@ -139,7 +143,6 @@ function renderUserList(users) {
               </span>
             ` : ''}
 
-            <!-- Status Badge -->
             <span class="px-2 py-0.5 text-xs rounded-full ${
               isOffline 
                 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold' 
@@ -153,7 +156,6 @@ function renderUserList(users) {
         <p class="text-xs text-slate-400">User ID: <span class="text-slate-200 font-mono">${u.id || 'N/A'}</span></p>
         <p class="text-xs text-slate-400">Phone: <span class="text-slate-200 font-mono">${u.phone || 'N/A'}</span></p>
 
-        <!-- Alert Banners -->
         ${isOffline ? `
           <div class="text-[11px] text-rose-400 font-semibold bg-rose-500/10 p-2 rounded-lg border border-rose-500/20 flex items-center gap-1.5">
             <span>❌</span> Device Disconnected / Switched Off
@@ -195,21 +197,13 @@ window.searchUser = function() {
   }
 };
 
-function initMap() {
-  const mapElement = document.getElementById("map");
-  if (!mapElement) return;
-
-  const map = new google.maps.Map(mapElement, {
-    center: { lat: 20.5937, lng: 78.9629 }, // Your default center
-    zoom: 5,
-  });
-
-  // Your socket / marker setup code here...
-}
-
-// Make sure it runs after DOM + Google Maps script are loaded
-if (document.readyState === 'complete') {
+// Auto-trigger if Google Maps script is loaded after app.js or on window load
+if (typeof google !== 'undefined' && google.maps) {
   initMap();
 } else {
-  window.addEventListener('load', initMap);
+  window.addEventListener('load', () => {
+    if (typeof google !== 'undefined' && google.maps) {
+      initMap();
+    }
+  });
 }
