@@ -3,80 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Driver Location Sharing</title>
+  <title>Share Live Location</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="/socket.io/socket.io.js"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
 
-  <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 w-full max-w-sm space-y-4 text-center">
-    <h2 class="text-xl font-bold">GPS Tracker Access</h2>
-    <p class="text-xs text-slate-400">Enter your name to start sharing live location:</p>
+  <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 w-full max-w-sm space-y-4 text-center shadow-xl">
+    <div class="inline-flex p-3 bg-emerald-500/10 text-emerald-400 rounded-full mb-1">
+      📍
+    </div>
+    <h2 class="text-xl font-bold">GPS Location Sharing</h2>
+    <p class="text-xs text-slate-400">Enter your name below to start broadcasting live tracking to the dashboard:</p>
 
     <input 
       type="text" 
       id="driverName" 
       placeholder="Your Name (e.g. Khushi)" 
-      class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      class="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
     />
 
     <button 
       id="shareBtn"
-      onclick="startTracking()" 
+      onclick="startBroadcasting()" 
       class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-bold text-sm transition">
       Share My Location
     </button>
 
-    <div id="statusMessage" class="text-xs text-emerald-400 font-semibold hidden">
+    <div id="statusMessage" class="text-xs text-emerald-400 font-semibold hidden animate-pulse">
       ✓ Broadcasting Live Location!
     </div>
   </div>
 
   <script>
-    const socket = io();
+    // Get phone number passed in URL query param (?phone=91...)
+    const urlParams = new URLSearchParams(window.location.search);
+    const identifier = urlParams.get('phone') || 'Driver-' + Math.floor(1000 + Math.random() * 9000);
+
     let watchId = null;
 
-    // Get phone parameter from URL query string
-    const urlParams = new URLSearchParams(window.location.search);
-    const driverPhone = urlParams.get('phone') || '';
+    async function sendLocationToServer(lat, lng, speed = 0) {
+      const nameInput = document.getElementById('driverName').value.trim();
 
-    function startTracking() {
+      // Read battery state if supported by browser
+      let batteryLevel = null;
+      let isCharging = false;
+      if ('getBattery' in navigator) {
+        try {
+          const battery = await navigator.getBattery();
+          batteryLevel = Math.round(battery.level * 100);
+          isCharging = battery.charging;
+        } catch (e) {}
+      }
+
+      try {
+        const response = await fetch('/api/user/update-location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: identifier,
+            name: nameInput || 'Driver',
+            lat: lat,
+            lng: lng,
+            speed: speed,
+            batteryLevel: batteryLevel,
+            isCharging: isCharging
+          })
+        });
+
+        const data = await response.json();
+        console.log('Location update sent:', data);
+      } catch (err) {
+        console.error('Failed to send location:', err);
+      }
+    }
+
+    function startBroadcasting() {
       const nameInput = document.getElementById('driverName').value.trim();
       if (!nameInput) {
-        alert('Please enter your name.');
+        alert('Please enter your name first.');
         return;
       }
 
       if (!navigator.geolocation) {
-        alert('Geolocation is not supported by your browser.');
+        alert('Geolocation is not supported by your device.');
         return;
       }
 
       const statusMsg = document.getElementById('statusMessage');
       const shareBtn = document.getElementById('shareBtn');
 
-      // Request live location tracking with high accuracy
+      shareBtn.innerText = 'Sharing Active...';
+      shareBtn.disabled = true;
+      shareBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      statusMsg.classList.remove('hidden');
+
+      // Watch high precision GPS position
       watchId = navigator.geolocation.watchPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
-
-          // Emit to server
-          socket.emit('updateLocation', {
-            id: driverPhone || socket.id,
-            name: nameInput,
-            phone: driverPhone,
-            lat: latitude,
-            lng: longitude
-          });
-
-          statusMsg.classList.remove('hidden');
-          shareBtn.innerText = 'Sharing Active...';
-          shareBtn.disabled = true;
-          shareBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          const { latitude, longitude, speed } = position.coords;
+          sendLocationToServer(latitude, longitude, speed || 0);
         },
         (error) => {
           console.error('GPS Error:', error);
-          alert('GPS permission denied or unavailable. Please enable Location Services on your device.');
+          alert('GPS Access Denied. Please enable location permissions in your mobile browser settings.');
         },
         {
           enableHighAccuracy: true,
