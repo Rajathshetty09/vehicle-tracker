@@ -50,12 +50,33 @@
           <span class="text-slate-400">Longitude:</span>
           <span id="lngVal" class="font-mono text-slate-200">--</span>
         </div>
+        <!-- Battery Status Row -->
+        <div class="flex justify-between border-t border-slate-800 pt-2 mt-2">
+          <span class="text-slate-400">Battery Status:</span>
+          <span id="batteryVal" class="font-mono text-slate-200">--</span>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     let watchId = null;
+
+    // Helper to safely fetch device battery level & status
+    async function getBatteryInfo() {
+      if ('getBattery' in navigator) {
+        try {
+          const battery = await navigator.getBattery();
+          return {
+            level: Math.round(battery.level * 100),
+            isCharging: battery.charging
+          };
+        } catch (e) {
+          console.warn("Battery Status API not supported or blocked:", e);
+        }
+      }
+      return { level: null, isCharging: null };
+    }
 
     window.addEventListener('DOMContentLoaded', () => {
       const urlParams = new URLSearchParams(window.location.search);
@@ -91,21 +112,38 @@
       document.getElementById('statusCard').classList.remove('hidden');
 
       watchId = navigator.geolocation.watchPosition(
-        (position) => {
+        async (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           const speed = position.coords.speed ? (position.coords.speed * 3.6) : 0;
 
+          // Fetch current battery status
+          const battery = await getBatteryInfo();
+
           document.getElementById('latVal').textContent = lat.toFixed(6);
           document.getElementById('lngVal').textContent = lng.toFixed(6);
 
+          if (battery.level !== null) {
+            document.getElementById('batteryVal').textContent = `${battery.level}% ${battery.isCharging ? '⚡ (Charging)' : '🔋'}`;
+          } else {
+            document.getElementById('batteryVal').textContent = 'N/A';
+          }
+
+          // Send GPS + Battery data to server
           fetch('/api/user/update-location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier: phone, lat, lng, speed })
+            body: JSON.stringify({ 
+              identifier: phone, 
+              lat, 
+              lng, 
+              speed,
+              batteryLevel: battery.level,
+              isCharging: battery.isCharging
+            })
           })
           .then(res => res.json())
-          .then(data => console.log('Location sent:', data))
+          .then(data => console.log('Location & Battery sent:', data))
           .catch(err => console.error('Error sending GPS:', err));
         },
         (error) => {
